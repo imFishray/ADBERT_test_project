@@ -1,48 +1,36 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { getPosts } from './postsSlice';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 
-// 改用 jsonplaceholder API，統計每個 user 的貼文數
-const API_URL = 'https://jsonplaceholder.typicode.com/posts';
-
 export default function ChartDemo() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const dispatch = useDispatch();
+  const { data: posts, loading, error } = useSelector(state => state.posts);
 
   useEffect(() => {
-    fetch(API_URL)
-      .then(res => {
-        if (!res.ok) throw new Error('API error');
-        return res.json();
-      })
-      .then(json => {
-        // 統計每個 userId 的貼文數與標題字數總和
-        const stats = {};
-        json.forEach(post => {
-          if (!stats[post.userId]) {
-            stats[post.userId] = { userId: String(post.userId), count: 0, titleLength: 0 };
-          }
-          stats[post.userId].count += 1;
-          stats[post.userId].titleLength += post.title ? post.title.length : 0;
-        });
-        const arr = Object.values(stats);
-        setData(arr);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError(err.message);
-        setLoading(false);
-      });
-  }, []);
+    dispatch(getPosts());
+  }, [dispatch]);
+
+  const chartData = useMemo(() => {
+    const stats = {};
+    posts.forEach(post => {
+      if (!stats[post.userId]) {
+        stats[post.userId] = { userId: String(post.userId), count: 0, titleLength: 0 };
+      }
+      stats[post.userId].count += 1;
+      stats[post.userId].titleLength += post.title ? post.title.length : 0;
+    });
+    return Object.values(stats);
+  }, [posts]);
 
   if (loading) return <CircularProgress />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
   return (
     <ResponsiveContainer width="100%" height={400}>
-      <BarChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+      <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="userId" />
         <YAxis />
